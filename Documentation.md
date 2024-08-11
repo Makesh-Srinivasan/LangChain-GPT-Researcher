@@ -6,15 +6,16 @@ The `LocalGPTResearcher` and `WebGPTResearcher` tools are designed to assist wit
 
 ### Key Features
 
-🔬 The `LocalGPTResearcher` can work with various local file formats such as PDF, Word documents, CSVs, and more.
-🛜 The `WebGPTResearcher` fetches data directly from the internet, making it suitable for up-to-date information gathering.
-📝 Generate research, outlines, resources and lessons reports with local documents and web sources
-📜 Can generate long and detailed research reports (over 2K words)
-🌐 Aggregates over 20 web sources per research to form objective and factual conclusions
-🖥️ Includes an easy-to-use web interface (HTML/CSS/JS)
-🔍 Scrapes web sources with javascript support
-📂 Keeps track and context of visited and used web sources
-📄 Export research reports to PDF, Word and more...
+- 🔬 The `LocalGPTResearcher` can work with various local file formats such as PDF, Word documents, CSVs, and more.
+- 🛜 The `WebGPTResearcher` fetches data directly from the internet, making it suitable for up-to-date information gathering.
+- 📝 Generate research, outlines, resources and lessons reports with local documents and web sources
+- 📜 Can generate long and detailed research reports (over 2K words)
+- 🌐 Aggregates over 20 web sources per research to form objective and factual conclusions
+- 🖥️ Includes an easy-to-use web interface (HTML/CSS/JS)
+- 🔍 Scrapes web sources with javascript support
+- 📂 Keeps track and context of visited and used web sources
+- 📄 Export research reports to PDF, Word and more...
+
 ---
 
 ## Installation and Setup
