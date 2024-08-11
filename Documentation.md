@@ -1,5 +1,30 @@
 # GPT-Researcher Tools for LangChain
 
+---
+
+## Table of Contents
+- [Introduction](#introduction)
+  - [Key Features](#key-features)
+- [Installation and Setup](#installation-and-setup)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
+- [Usage Examples](#usage-examples)
+  - [LocalGPTResearcher Example](#localgptresearcher-example)
+  - [WebGPTResearcher Example](#webgptresearcher-example)
+- [Chaining with Other Components](#chaining-with-other-components)
+  - [Using AgentExecutor with WebGPTResearcher](#example-using-agentexecutor-with-webgptresearcher)
+  - [Chaining WebGPTResearcher with Prompt and Parsing Output](#example-chaining-webgptresearcher-with-prompt-and-parsing-output)
+- [Building from Base Class](#building-from-base-class)
+  - [Extending BaseGPTResearcher](#extending-basegptresearcher)
+  - [Building CustomGPTResearcher](#building-customgptresearcher)
+  - [Off-the-Shelf Usage](#off-the-shelf-usage)
+- [Performance Considerations](#performance-considerations)
+- [Links and References](#links-and-references)
+- [Contribution Guide](#contribution-guide)
+
+---
+
 ## Introduction
 
 The `LocalGPTResearcher` and `WebGPTResearcher` tools are designed to assist with conducting thorough research on specific topics or queries. These tools leverage the power of GPT models to generate detailed reports, making them ideal for various research-related tasks. The `LocalGPTResearcher` tool accesses local data files, while the `WebGPTResearcher` retrieves information from the web.
@@ -54,14 +79,14 @@ export TAVILY_API_KEY=your-tavily-api-key
 This example demonstrates how to use `LocalGPTResearcher` to generate a report based on local documents.
 
 ```python
-from langchain_community.tools.gpt_researcher import LocalGPTResearcher
+from libs.community.langchain_community.tools.gpt_researcher.tool import LocalGPTResearcher  # This will be changed after successful PR
 
 # Initialize the tool
 researcher_local = LocalGPTResearcher(report_type="research_report")
 # You can also define it as `researcher_local = LocalGPTResearcher()` - default report_type is research_report.
 
 # Run a query
-query = "What can you tell me about myself based on my documents?"
+query = "What is the demographics of Apple inc look like?"
 report = researcher_local.invoke({"query":query})
 
 print("Generated Report:", report)
@@ -71,7 +96,7 @@ print("Generated Report:", report)
 This example shows how to use `WebGPTResearcher` to generate a report based on web data.
 
 ```python
-from langchain_community.tools.gpt_researcher import WebGPTResearcher
+from libs.community.langchain_community.tools.gpt_researcher.tool import WebGPTResearcher  # This will be changed after successful PR
 
 # Initialize the tool
 researcher_web = WebGPTResearcher(report_type="research_report") # report_type="research_report" is optional as the default value is `research_report`
@@ -89,54 +114,105 @@ print("Generated Report:", report)
 
 ### Example: Using `AgentExecutor` with `WebGPTResearcher`
 
+Let us see how to build an AgentExecutor wrapper that uses an LLM and our tool to write an essay and provide a citation/signature at the end of the report.
+
 ```python
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableConfig, chain
-from langchain.agents import AgentExecutor
-from langchain_community.tools.gpt_researcher import WebGPTResearcher
-from langchain.llms import ChatOpenAI
+from libs.community.langchain_community.tools.gpt_researcher.tool import WebGPTResearcher  # This will be changed after successful PR
+
+from langchain import hub
+from langchain_core.tools import Tool
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain.tools import tool
+from langchain_openai import ChatOpenAI
+
+
+# Let us see how to use the WebGPTResearcher tool along with AgentExecutor to perform a grand task with decision making.
+# 1. Let us build a Reactive Agent who takes decisions based on reasoning.
+# 2. Let us give our agent 2 tools - WebGPTResearcher and a dummy tool that provides a signature at the end of the text
+# 3. We can then wrap our agent and tools inside an AgentExecutor object and ask our question!
+# The expectation is the response must be signed at the end after a long report on a research topic.
+
+
+# Create a new tool called citation_provider.
+@tool
+def citation_provider(text: str) -> int:
+    """Provides a citation or signature"""
+    return "\n- Written by GPT-Makesh\nThanks for reading!\n"
+
+
+# Create the WebGPTResearcher tool
+researcher_web = WebGPTResearcher("research_report")
 
 # Initialize tools and components
-researcher_web = WebGPTResearcher("research_report")
-tools = [researcher_web]
-llm = ChatOpenAI(model="gpt-4o")
-prompt = ChatPromptTemplate([
-    ("system", "You are a research assistant."),
-    ("human", "{input}")
-])
+tools = [
+    researcher_web,
+    Tool(
+        name = "citation_tool",  
+        func = citation_provider,  
+        description = "Useful for when you need to add citation or signature at the end of text",
+    ),
+]
 
-# Create the agent
-agent = create_tool_calling_agent(llm=llm, tools=tools, prompt=prompt)
+# Create an LLM
+llm = ChatOpenAI(model="gpt-4o")
+prompt = hub.pull("hwchase17/react")
+
+# Create the ReAct agent using the create_react_agent function
+agent = create_react_agent(
+    llm=llm,
+    tools=tools,
+    prompt=prompt,
+    stop_sequence=True,
+)
+
+# Wrap the components inside an AgentExecutor
 agent_executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
 
 # Run the agent
-question = "What are the demographics of Apple Inc.?"
+question = "What are the recent advancements in AI? Provide a citation for your report too."
 response = agent_executor.invoke({"input": question})
-
 print("Agent Response:", response)
 ```
 
-### Example: Chaining `LocalGPTResearcher` with Prompt and Parsing Output
+### Example: Chaining `WebGPTResearcher` with Prompt and Parsing Output
+
+Let us build a chain of runnables that have a researcher who writes a report and a grader who then grades and scores the report.
 
 ```python
+from libs.community.langchain_community.tools.gpt_researcher.tool import WebGPTResearcher
+
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.tools.gpt_researcher import LocalGPTResearcher
-from langchain.llms import ChatOpenAI
+from langchain.schema.output_parser import StrOutputParser
+from langchain.schema.runnable import RunnableLambda
+from langchain_openai import ChatOpenAI
 
-# Initialize tool
-researcher_local = LocalGPTResearcher(report_type="research_report")
+# Let us use WebGPTResearcher to grade the essay using LECL langchain Chaining tricks
+# 1. Use the researcher to write an essay
+# 2. Pass it as a chat_prompt_template (a runnable) to a grader to score the essay
+# 3. Parse the output as a string
 
-# Create a prompt template
-prompt = ChatPromptTemplate([
-    ("system", "You are a document analyzer."),
-    ("human", "{input}")
-])
 
-# Run the tool with the prompt
-query = "Summarize the key points from my documents."
-response = researcher_local._run(prompt.format(input=query))
+# Create a ChatOpenAI model
+grader = ChatOpenAI(model="gpt-4o")
+researcher_tool = WebGPTResearcher()
+prompt_template = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a essay grader. Give score out of 10 in brief"),
+        ("human", "The essay: {essay}"),
+    ]
+)
 
-print("Summary:", response)
+# Define our WebGPTResearcher tool as a RunnableLambda
+researcher = RunnableLambda(lambda x: researcher_tool.invoke(x))
+
+# Create the combined chain using LangChain Expression Language (LCEL)
+chain = researcher | prompt_template | grader | StrOutputParser() 
+
+# Run the chain
+result = chain.invoke({"query": "What are the recent advancements in AI?"})
+
+# Output
+print(result)
 ```
 
 ---
@@ -148,7 +224,7 @@ print("Summary:", response)
 You can create custom tools by extending the `BaseGPTResearcher` class. Here's an example:
 
 ```python
-from langchain_community.tools.gpt_researcher import BaseGPTResearcher, ReportType
+from libs.community.langchain_community.tools.gpt_researcher.tool import WebGPTResearcher
 
 class CustomGPTResearcher(BaseGPTResearcher):
     name = ""
@@ -158,6 +234,7 @@ class CustomGPTResearcher(BaseGPTResearcher):
 
     # Override or extend methods as needed (You need to implement `_run()` method, `_arun()` is optional)
 ```
+API reference: (GPT Researcher tool)[link]
 
 ### Building CustomGPTResearcher
 
@@ -165,43 +242,29 @@ You can define a custom GPTR tool as shown below:
 
 ```python
 import asyncio
-from enum import Enum
-from typing import Optional, Type, Literal
+from typing import Optional, Type
 
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.tools import BaseTool
-from gpt_researcher.master.agent import GPTResearcher
-
-class ReportType(str, Enum):
-    RESEARCH = "research_report"
-    SUBTOPIC = "subtopic_report"
-    CUSTOM = "custom_report"
-    OUTLINE = "outline_report"
-    RESOURCE = "resource_report"
+from gpt_researcher import GPTResearcher
 
 
 class GPTRInput(BaseModel):
     """Input schema for the GPT-Researcher tool."""
     query: str = Field(description="The search query for the research")
 
-
-class BaseGPTResearcher(BaseTool):
-    name: str = "base_gpt_researcher"
-    description: str = "Base tool for researching and producing detailed information about a topic or query."
+class MyGPTResearcher(BaseTool):
+    name: str = "custom_gpt_researcher"
+    description: str = "Base tool for researching and producing detailed information about a topic or query using the internet."
     args_schema: Type[BaseModel] = GPTRInput
-    report_type: ReportType = Field(default=ReportType.RESEARCH)
-    report_source: Literal["local", "web"] = Field(default="web")
-
-    def __init__(self, report_type: ReportType = ReportType.RESEARCH, report_source: Literal["local", "web"] = "web"):
-        super().__init__(report_type=report_type, report_source=report_source)
 
     async def get_report(self, query: str) -> str:
         try:
             researcher = GPTResearcher(
                 query=query,
-                report_type=self.report_type,
-                report_source=self.report_source,
+                report_type="research_report",
+                report_source="web",
                 verbose=False
             )
             await researcher.conduct_research()
@@ -210,25 +273,34 @@ class BaseGPTResearcher(BaseTool):
         except Exception as e:
             raise ValueError(f"Error generating report: {str(e)}")
 
-    def _run(self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
-        return asyncio.run(self.get_report(query=query))
+    def _run(
+            self, 
+            query: str, 
+            run_manager: Optional[CallbackManagerForToolRun] = None
+        ) -> str:
+        answer = asyncio.run(self.get_report(query=query))
+        answer += "\n\n- By GPT-Makesh.\nThanks for reading!"
+        return answer
 
+my_researcher = MyGPTResearcher()
+report = my_researcher.invoke({"query": "What are the recent advancements in AI?"})
+print(report)
 ```
 
 ### Off-the-Shelf Usage
 
-Alternatively, you can directly use the provided tools without modification:
+Alternatively, you can directly use the provided tools without modification off-the-shelf.
 
 ```python
-from langchain_community.tools.gpt_researcher import WebGPTResearcher, LocalGPTResearcher
+from libs.community.langchain_community.tools.gpt_researcher.tool import WebGPTResearcher, LocalGPTResearcher
+
+# Use LocalGPTResearcher
+researcher_local = LocalGPTResearcher(report_type="research_report")
+report = researcher_local.invoke({'query':"What can you tell about the company?"})
 
 # Use WebGPTResearcher
 researcher_web = WebGPTResearcher(report_type="research_report")
 report = researcher_web.invoke({'query':"What are the latest advancements in AI?"})
-
-# Use LocalGPTResearcher
-researcher_local = LocalGPTResearcher(report_type="outline_report")
-report = researcher_local.invoke({'query':"Generate an outline for my upcoming project."})
 ```
 
 ---
@@ -252,5 +324,3 @@ report = researcher_local.invoke({'query':"Generate an outline for my upcoming p
 We welcome contributions to improve and extend the GPT-Researcher tools. Visit the [GitHub repository](https://github.com/assafelovic/gpt-researcher) to get started with contributing.
 
 ---
-
-This completes the documentation for the `LocalGPTResearcher` and `WebGPTResearcher` tools. If you have any additional feedback or require further changes, feel free to let me know!
