@@ -12,9 +12,9 @@
 - [Usage Examples](#usage-examples)
   - [LocalGPTResearcher Example](#localgptresearcher-example)
   - [WebGPTResearcher Example](#webgptresearcher-example)
-- [Chaining with Other Components](#chaining-with-other-components)
+- [Chaining with Other Components and Agentic Systems](#chaining-with-other-components-and-agentic-systems)
   - [Using AgentExecutor with WebGPTResearcher](#example-using-agentexecutor-with-webgptresearcher)
-  - [Chaining WebGPTResearcher with Prompt and Parsing Output](#example-chaining-webgptresearcher-with-prompt-and-parsing-output)
+  - [Simple Sequential Chaining of WebGPTResearcher](#simple-sequential-chaining-of-webgptresearcher)
 - [Building from Base Class](#building-from-base-class)
   - [Extending BaseGPTResearcher](#extending-basegptresearcher)
   - [Building CustomGPTResearcher](#building-customgptresearcher)
@@ -110,7 +110,7 @@ print("Generated Report:", report)
 
 ---
 
-## Chaining with Other Components
+## Chaining with Other Components and Agentic Systems
 
 ### Example: Using `AgentExecutor` with `WebGPTResearcher`
 
@@ -174,7 +174,7 @@ response = agent_executor.invoke({"input": question})
 print("Agent Response:", response)
 ```
 
-### Example: Chaining `WebGPTResearcher` with Prompt and Parsing Output
+### Example: Simple Sequential Chaining of `WebGPTResearcher`
 
 Let us build a chain of runnables that have a researcher who writes a report and a grader who then grades and scores the report.
 
