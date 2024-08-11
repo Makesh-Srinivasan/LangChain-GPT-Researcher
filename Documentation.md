@@ -5,6 +5,7 @@
 The `LocalGPTResearcher` and `WebGPTResearcher` tools are designed to assist with conducting thorough research on specific topics or queries. These tools leverage the power of GPT models to generate detailed reports, making them ideal for various research-related tasks. The `LocalGPTResearcher` tool accesses local data files, while the `WebGPTResearcher` retrieves information from the web.
 
 ### Key Features
+
 🔬 The `LocalGPTResearcher` can work with various local file formats such as PDF, Word documents, CSVs, and more.
 🛜 The `WebGPTResearcher` fetches data directly from the internet, making it suitable for up-to-date information gathering.
 📝 Generate research, outlines, resources and lessons reports with local documents and web sources
