@@ -135,7 +135,7 @@ from langchain_openai import ChatOpenAI
 
 # Create a new tool called citation_provider.
 @tool
-def citation_provider(text: str) -> int:
+def citation_provider(text: str) -> str:
     """Provides a citation or signature"""
     return "\n- Written by GPT-Makesh\nThanks for reading!\n"
 
